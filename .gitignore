@@ -1,4 +1,11 @@
 .DS_Store
+._*
+.Spotlight-V100/
+.Trashes/
+.fseventsd/
+Icon?
+*.icloud
+_local/
 build/
 *.xcuserstate
 *.swp
