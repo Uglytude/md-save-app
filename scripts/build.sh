@@ -10,6 +10,12 @@ ICONSET="$BUILD_DIR/AppIcon.iconset"
 ICON_PNG="$ROOT/assets/AppIcon.png"
 ICON_ICNS="$BUILD_DIR/AppIcon.icns"
 
+export COPYFILE_DISABLE=1
+
+clean_appledouble() {
+  find "$@" -name '._*' -type f -delete 2>/dev/null || true
+}
+
 rm -rf "$APP" "$ICONSET"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$ICONSET"
 
@@ -37,6 +43,7 @@ make_icon 512 "icon_256x256@2x.png"
 make_icon 512 "icon_512x512.png"
 make_icon 1024 "icon_512x512@2x.png"
 
+clean_appledouble "$ICONSET"
 iconutil -c icns "$ICONSET" -o "$ICON_ICNS"
 cp "$ICON_ICNS" "$APP/Contents/Resources/AppIcon.icns"
 
@@ -44,7 +51,9 @@ swiftc "$ROOT/Sources/main.swift" -framework AppKit -o "$APP/Contents/MacOS/$EXE
 chmod +x "$APP/Contents/MacOS/$EXECUTABLE"
 
 xattr -cr "$APP" 2>/dev/null || true
+clean_appledouble "$APP" "$BUILD_DIR"
 codesign --force --deep --sign - "$APP"
+clean_appledouble "$APP" "$BUILD_DIR"
 codesign --verify --deep "$APP"
 
 echo "Built $APP"
