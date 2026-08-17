@@ -96,10 +96,16 @@ final class VaultSettings {
     }
 }
 
+final class PlainTextView: NSTextView {
+    override func paste(_ sender: Any?) {
+        pasteAsPlainText(sender)
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
     private let topicField = NSTextField()
-    private let textView = NSTextView()
+    private let textView = PlainTextView()
     private let vaultLabel = NSTextField(labelWithString: "")
     private let settings = VaultSettings.shared
 
@@ -172,10 +178,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         textView.autoresizingMask = [.width]
         textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.isRichText = false
+        textView.importsGraphics = false
+        textView.allowsUndo = true
         textView.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
-        textView.string = clipboardText()
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.isAutomaticDataDetectionEnabled = false
+        textView.isAutomaticLinkDetectionEnabled = false
+        textView.string = clipboardText()
+        moveBodyCursorToEnd()
+        textView.undoManager?.removeAllActions()
         scrollView.documentView = textView
 
         let pasteButton = NSButton(title: "Paste Clipboard", target: self, action: #selector(pasteClipboard))
@@ -251,6 +268,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fileMenuItem.submenu = fileMenu
         mainMenu.addItem(fileMenuItem)
 
+        let editMenuItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+
+        let undoItem = NSMenuItem(title: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        undoItem.keyEquivalentModifierMask = [.command]
+        editMenu.addItem(undoItem)
+
+        let redoItem = NSMenuItem(title: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        redoItem.keyEquivalentModifierMask = [.command, .shift]
+        editMenu.addItem(redoItem)
+        editMenu.addItem(.separator())
+
+        let cutItem = NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        cutItem.keyEquivalentModifierMask = [.command]
+        editMenu.addItem(cutItem)
+
+        let copyItem = NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        copyItem.keyEquivalentModifierMask = [.command]
+        editMenu.addItem(copyItem)
+
+        let pasteItem = NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        pasteItem.keyEquivalentModifierMask = [.command]
+        editMenu.addItem(pasteItem)
+        editMenu.addItem(.separator())
+
+        let selectAllItem = NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        selectAllItem.keyEquivalentModifierMask = [.command]
+        editMenu.addItem(selectAllItem)
+
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
+
         NSApp.mainMenu = mainMenu
     }
 
@@ -284,6 +333,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         textView.string = text
+        moveBodyCursorToEnd()
+        textView.undoManager?.removeAllActions()
     }
 
     @objc private func saveDraft() {
@@ -306,6 +357,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func clipboardText() -> String {
         NSPasteboard.general.string(forType: .string) ?? ""
+    }
+
+    private func moveBodyCursorToEnd() {
+        let end = (textView.string as NSString).length
+        textView.setSelectedRange(NSRange(location: end, length: 0))
+        textView.scrollRangeToVisible(NSRange(location: end, length: 0))
     }
 
     private func showAlert(title: String, message: String) {
